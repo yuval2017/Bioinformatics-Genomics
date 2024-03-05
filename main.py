@@ -39,7 +39,11 @@ def find_global_alignments_with_scores(seq1, seq2, match=1, mismatch=-1, indel=-
             else:
                 dp[i][j] = max(dp[i - 1][j - 1] + mismatch, dp[i - 1][j] + indel, dp[i][j - 1] + indel)
 
-    def traceback(i, j, align1="", align2="", trace=[], paths=[]):
+    def traceback(i, j, align1="", align2="", trace=None, paths=None):
+        if paths is None:
+            paths = []
+        if trace is None:
+            trace = []
         if len(paths) >= max_alignments:
             return
         if i > 0 and j > 0:
@@ -58,73 +62,75 @@ def find_global_alignments_with_scores(seq1, seq2, match=1, mismatch=-1, indel=-
 
     paths = []
     traceback(n, m, "", "", [], paths)
-
-    alignments_with_traces_and_scores = []
+    format = []
     for align1, align2, trace in paths:
-        score = dp[n][m]  # The score of global alignment is in the bottom-right cell
-        alignments_with_traces_and_scores.append({"alignment": (align1, align2), "trace": trace, "score": score})
+        format.append((trace, align1, align2))
 
-    return {"alignments_with_traces_and_scores": alignments_with_traces_and_scores, "dp_table": dp,
-            "optimal_score": dp[n][m]}
+    return dp, dp[n][m], format
 
 
-# Re-import NumPy and define the function again
 import numpy as np
 
 
-def ends_space_free_alignment_with_ends(seq1, seq2, match_score=1, mismatch_score=-1, gap_score=-1):
-    rows, cols = len(seq1) + 1, len(seq2) + 1
-    score_matrix = np.zeros((rows, cols), dtype=int)
+def end_space_free_alignment(seq1, seq2, match_score=1, mismatch_score=-1, gap_score=-1):
+    # Initialize the scoring matrix
+    n, m = len(seq1), len(seq2)
+    score_matrix = np.zeros((n + 1, m + 1), dtype=int)
 
-    # Fill the scoring matrix
-    for i in range(1, rows):
-        for j in range(1, cols):
-            if seq1[i-1] == seq2[j-1]:
-                match = score_matrix[i-1, j-1] + match_score
-            else:
-                match = score_matrix[i-1, j-1] + mismatch_score
-            delete = score_matrix[i-1, j] + gap_score
-            insert = score_matrix[i, j-1] + gap_score
-            score_matrix[i, j] = max(match, delete, insert, 0)
+    # Initialize first row and column based on gap penalty
+    # For end-space free alignment, the first row and column are initialized to 0
+    # as we allow free gaps at the beginning and end of the alignment
 
-    # Traceback to find the alignment, including ends
-    def traceback(start_pos):
-        i, j = start_pos
-        align1, align2 = "", ""
-        path = [(i, j)]
-        while i > 0 or j > 0:
-            if i > 0 and (j == 0 or score_matrix[i, j] == score_matrix[i-1, j] + gap_score):
-                align1 = seq1[i-1] + align1
-                align2 = "-" + align2
-                i -= 1
-            elif j > 0 and (i == 0 or score_matrix[i, j] == score_matrix[i, j-1] + gap_score):
-                align1 = "-" + align1
-                align2 = seq2[j-1] + align2
-                j -= 1
-            else:
-                align1 = seq1[i-1] + align1
-                align2 = seq2[j-1] + align2
-                i -= 1
-                j -= 1
-            path.insert(0, (i, j))
+    # Fill in the scoring matrix
+    for i in range(1, n + 1):
+        for j in range(1, m + 1):
+            match = score_matrix[i - 1, j - 1] + (match_score if seq1[i - 1] == seq2[j - 1] else mismatch_score)
+            delete = score_matrix[i - 1, j] + gap_score
+            insert = score_matrix[i, j - 1] + gap_score
+            score_matrix[i, j] = max(match, delete, insert, 0)  # Allow dropping to 0 for local alignment
 
-        # Add trailing '-' to align ends if necessary
-        while len(align1) < len(align2):
-            align1 += "-"
-        while len(align2) < len(align1):
-            align2 += "-"
+    # Traceback from the highest scoring cell
+    # For end-space free alignment, we find the highest score in the last row or column
+    max_score = np.max(score_matrix)
+    max_pos = np.where(score_matrix == max_score)
+    max_i, max_j = max_pos[0][0], max_pos[1][0]  # Take the first occurrence of the max score
 
-        return align1, align2, path, score_matrix[start_pos[0], start_pos[1]]
+    paths = [(max_i, max_j, [], [], [])]
+    align_with_paths = []
+    while paths:
+        i, j, align1, align2, curr_path = paths.pop()
+        curr_path = [(i, j)] + curr_path
+        if i > 0 and j > 0 and score_matrix[i, j] > 0:
+            score_current = score_matrix[i, j]
+            score_diagonal = score_matrix[i - 1, j - 1]
+            score_up = score_matrix[i - 1, j]
+            score_left = score_matrix[i, j - 1]
 
-    # Find the starting positions for the highest scoring alignments
-    best_scores = np.argwhere(score_matrix == np.max(score_matrix))
-    alignments = []
-    for start_pos in best_scores[:2]:  # Up to two alignments
-        alignments.append(traceback((start_pos[0], start_pos[1])))
+            if score_current == score_diagonal + (match_score if seq1[i - 1] == seq2[j - 1] else mismatch_score):
+                curr_align1 = [seq1[i - 1]] + align1[::]
+                curr_align2 = [seq2[j - 1]] + align2[::]
+                paths.append((i - 1, j - 1, curr_align1, curr_align2, curr_path[::]))
+            if score_current == score_up + gap_score:
+                curr_align1 = [seq1[i - 1]] + align1[::]
+                curr_align2 = ["-"] + align2[::]
+                paths.append((i - 1, j, curr_align1, curr_align2, curr_path[::]))
+            if score_current == score_left + gap_score:
+                curr_align1 = ["-"] + align1[::]
+                curr_align2 = [seq2[j - 1]] + align2[::]
+                paths.append((i, j - 1, curr_align1, curr_align2, curr_path[::]))
+        else:
+            align_with_paths.append((curr_path, "".join(align1), "".join(align2)))
+    return [list(row) for row in score_matrix], max_score, align_with_paths[:2]
 
-    return alignments, score_matrix
 
-# Example use
+def save_result(dp, score, format):
+    for row in dp:
+        print(row)
+    print(score)
+    for path, align1, align2 in format:
+        print(align1)
+        print(align2)
+        print(path)
 
 
 # Example usage
@@ -143,18 +149,10 @@ if __name__ == "__main__":
 
     seq1 = "CACTGTAC"
     seq2 = "GACACTTG"
-    result = find_global_alignments_with_scores(seq1, seq2, 2)
-    for item in result["alignments_with_traces_and_scores"]:
-        print("Alignment:", item["alignment"])
-        print("Trace:", item["trace"])
-        print("Score:", item["score"])
-        print()
+    dp, score, paths = find_global_alignments_with_scores(seq1, seq2)
+    save_result(dp, score, paths)
 
-    print('--------------------')
-    alignments_with_ends, score_matrix_with_ends = ends_space_free_alignment_with_ends("CACTGTAC", "GACACTTG", 2)
-    print(alignments_with_ends)
-    print(score_matrix_with_ends)
-
-    # Example usage
-
-    # dp_table, aligned_seq1, aligned_seq2 = end_space_free_alignment(seq1, seq2)
+    print("------------")
+    # Calculate the best end-space free alignment
+    dp, score, paths = end_space_free_alignment(seq1, seq2)
+    save_result(dp, score, paths)
