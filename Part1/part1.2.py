@@ -1,6 +1,44 @@
 import random
 
-from urllib3.connectionpool import xrange
+from matplotlib import pyplot as plt
+
+
+def plot_matrix(matrix, square_width=0.1, square_high=0.1, yellow_squares=[], green_squares=[]):
+    fig, ax = plt.subplots()
+    ax.axis('tight')
+    ax.axis('off')
+    the_table = ax.table(cellText=matrix, loc='center')
+
+    # Increase cell padding to make each square bigger
+    cell_dict = the_table.get_celld()
+    for key in cell_dict:
+        cell = cell_dict[key]
+        cell.set_height(square_high)  # Adjust this value as needed
+        cell.set_width(square_width)  # Adjust this value as needed
+        cell.get_text().set_fontsize(16)  # Adjust this value as needed for the font size
+
+        # Center the text horizontally and vertically within each cell
+        cell.get_text().set_horizontalalignment('center')
+        cell.get_text().set_verticalalignment('center')
+
+    # Paint yellow and green squares
+    for square in yellow_squares:
+        if square in green_squares:
+            cell = cell_dict[square]
+            cell.set_facecolor('yellowgreen')
+        else:
+            cell = cell_dict[square]
+            cell.set_facecolor('yellow')
+
+    for square in green_squares:
+        if square not in yellow_squares:
+            cell = cell_dict[square]
+            cell.set_facecolor('green')
+
+    the_table.auto_set_font_size(False)
+    the_table.set_fontsize(12)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.show()
 
 
 def generate_random_RNA_sequence(length):
@@ -76,51 +114,20 @@ def nussinov(S, pairs):
     fold = traceback(dp, S, 0, len(S) - 1, pairs)
     return dp, fold, dot_write(S, fold)
 
-import matplotlib.pyplot as plt
 
-def plot_matrix(matrix):
-    matrix = np.array(matrix)
-
-    plt.imshow(matrix, cmap='gray', interpolation='nearest')
-
-    for i in range(matrix.shape[0]):
-        for j in range(matrix.shape[1]):
-            plt.text(j, i, str(matrix[i, j]), ha='center', va='center', color='white')
-
-    # Setting the axis labels
-    plt.xlabel('Columns')
-    plt.ylabel('Rows')
-
-    # Setting the title
-    plt.title('Matrix Plot')
-
-    # Removing axis ticks
-    plt.xticks([])
-    plt.yticks([])
-
-    # Set background color to white
-    plt.gca().set_facecolor('white')
 
 
 if __name__ == "__main__":
     length = 20
     RNA_sequence = generate_random_RNA_sequence(length)
     print("Random RNA sequence S of length 20:")
-    print(len(RNA_sequence), RNA_sequence)
-    # Example usage:
-    sequence = "GGGAAAUCC"
-    sequence2 = "GGGAAAUCC"
+    print("The RNA sequence:", RNA_sequence)
 
     pairs = {("A", "U"), ("U", "A"), ("G", "C"), ("C", "G")}
-    ell = 1
-    table, fold, par = nussinov(sequence, pairs)
+    table, fold, par = nussinov(RNA_sequence, pairs)
 
-    # Example matrix
-    matrix = [[1, 2, 3],
-              [4, 5, 6],
-              [7, 8, 9]]
-
-    plot_matrix(matrix)
+    # Plot the matrix with the optimal secondary structure
+    plot_matrix(matrix=table, yellow_squares=fold, square_width=0.055, square_high=0.055)
 
     print("Optimal RNA secondary structure (base pairs):", fold)
-    print(par)
+    print("Nussinov algorithm parameters:", par)

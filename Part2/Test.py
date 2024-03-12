@@ -1,4 +1,8 @@
 import subprocess
+
+import numpy
+import numpy as np
+import matplotlib.pyplot as plt
 def analyze_structure(miRNA_fragment, mRNA_fragment, structure):
     # Split the structure at the '&' to analyze miRNA and mRNA separately
     miRNA_structure, mRNA_structure = structure.split('&')
@@ -50,11 +54,18 @@ def predict_RNA_duplex(miRNA, mRNA):
                                universal_newlines=True)
     input_seq = f"{miRNA}\n{mRNA}\n"
     output, error = command.communicate(input=input_seq)
-if __name__ == "__main__":
-    # Example usage with dummy data
-    miRNA_fragment = "AAGCTGCCAGTTGAAGAACTGT"
-    mRNA_fragment = "TTACTTCATGGCAGCTATCCCACAG"
-    predict_RNA_duplex(miRNA_fragment, mRNA_fragment)
-    predicted_structure = ".((((((((..(((((.&.)))))))))))))."
 
-    analyze_structure(miRNA_fragment, mRNA_fragment, predicted_structure)
+import matplotlib.pyplot as plt
+
+
+
+
+import matplotlib.pyplot as plt
+
+
+
+
+if __name__ == "__main__":
+    plot_matrix(numpy.zeros((5,5), dtype=int), yellow_squares=[(0,1),(0,0)], green_squares=[(0,0)])
+
+

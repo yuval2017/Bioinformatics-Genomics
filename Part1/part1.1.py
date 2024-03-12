@@ -1,22 +1,92 @@
 import random
+import numpy as np
+from matplotlib import pyplot as plt
+
+
+def plot_matrix(matrix, square_width=0.1, square_high=0.1, yellow_squares=[], green_squares=[]):
+    fig, ax = plt.subplots()
+    ax.axis('tight')
+    ax.axis('off')
+    the_table = ax.table(cellText=matrix, loc='center')
+
+    # Increase cell padding to make each square bigger
+    cell_dict = the_table.get_celld()
+    for key in cell_dict:
+        cell = cell_dict[key]
+        cell.set_height(square_high)  # Adjust this value as needed
+        cell.set_width(square_width)  # Adjust this value as needed
+        cell.get_text().set_fontsize(16)  # Adjust this value as needed for the font size
+
+        # Center the text horizontally and vertically within each cell
+        cell.get_text().set_horizontalalignment('center')
+        cell.get_text().set_verticalalignment('center')
+
+    # Paint yellow and green squares
+    for square in yellow_squares:
+        if square in green_squares:
+            cell = cell_dict[square]
+            cell.set_facecolor('yellowgreen')
+        else:
+            cell = cell_dict[square]
+            cell.set_facecolor('yellow')
+
+    for square in green_squares:
+        if square not in yellow_squares:
+            cell = cell_dict[square]
+            cell.set_facecolor('green')
+
+    the_table.auto_set_font_size(False)
+    the_table.set_fontsize(12)
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.show()
+
+
+def process_and_plot(func, seq1, seq2):
+    dp, score, paths = func(seq1, seq2)
+    print(paths[0][1])
+    path1, str_seq11, str_seq12 = (paths[0][0], paths[0][1], paths[0][2]) if paths else ([], "", "")
+    path2, str_seq21, str_seq22 = (paths[1][0], paths[1][1], paths[1][2]) if len(paths) > 1 else ([], "", "")
+    plot_matrix(matrix=dp, yellow_squares=path1, green_squares=path2)
+    print("Traces:")
+    print("Trace1:", path1)
+    print("Trace2:", path2)
+    print("First trace alignments:")
+    print("Alignment1:", str_seq11)
+    print("Alignment1:", str_seq12)
+    print("Second trace alignments:")
+    print("Alignment1:", str_seq21)
+    print("Alignment1:", str_seq22)
+
+    print("Score:", score)
 
 
 # Function to generate a random DNA sequence of given length
-def generate_sequence(length):
-    nucleotides = ['A', 'C', 'T', 'G']
-    sequence = [random.choice(nucleotides) for _ in range(length)]
-    return ''.join(sequence)
+import random
 
 
-# Generate random sequences
-def generate_sequences(length):
-    # Generate the first sequence
-    s1 = generate_sequence(length)
+def generate_dna_sequences(length=10):
+    # Define the DNA alphabet
+    dna_alphabet = ['A', 'C', 'T', 'G']
 
-    # Generate the second sequence ensuring that each nucleotide appears at least once
-    s2 = generate_sequence(length - 1)  # Start with one less nucleotide
-    missing_nucleotide = random.choice([nt for nt in 'ACTG' if nt not in s2])
-    s2 += missing_nucleotide  # Add the missing nucleotide to the second sequence
+    # Generate the first DNA sequence ensuring each nucleotide appears at least once
+    s1 = random.sample(dna_alphabet, 4)  # Take one of each nucleotide
+    remaining_letters = random.choices(dna_alphabet, k=length - 4)  # Fill the rest randomly
+    random.shuffle(remaining_letters)  # Shuffle the remaining letters
+    s1 += remaining_letters
+
+    # Generate the second DNA sequence ensuring each nucleotide appears at least once
+    s2 = random.sample(dna_alphabet, 4)  # Take one of each nucleotide
+    remaining_letters = random.choices(dna_alphabet, k=length - 4)  # Fill the rest randomly
+    random.shuffle(remaining_letters)  # Shuffle the remaining letters
+    s2 += remaining_letters
+
+    # Shuffle both sequences to randomize the order
+    random.shuffle(s1)
+    random.shuffle(s2)
+
+    # Convert lists to strings
+    s1 = ''.join(s1)
+    s2 = ''.join(s2)
 
     return s1, s2
 
@@ -64,12 +134,10 @@ def find_global_alignments_with_scores(seq1, seq2, match=1, mismatch=-1, indel=-
     traceback(n, m, "", "", [], paths)
     format = []
     for align1, align2, trace in paths:
+        trace.append((0, 0))
         format.append((trace, align1, align2))
 
     return dp, dp[n][m], format
-
-
-import numpy as np
 
 
 def end_space_free_alignment(seq1, seq2, match_score=1, mismatch_score=-1, gap_score=-1):
@@ -123,16 +191,6 @@ def end_space_free_alignment(seq1, seq2, match_score=1, mismatch_score=-1, gap_s
     return [list(row) for row in score_matrix], max_score, align_with_paths[:2]
 
 
-def save_result(dp, score, format):
-    for row in dp:
-        print(row)
-    print(score)
-    for path, align1, align2 in format:
-        print(align1)
-        print(align2)
-        print(path)
-
-
 # Example usage
 
 # Example usage
@@ -141,18 +199,9 @@ def save_result(dp, score, format):
 
 if __name__ == "__main__":
     # Generate sequences of length 10
-    #    s1, s2 = generate_sequences(10)
-
-    # Print the generated sequences
-    # print("Sequence 1 (S1):", s1)
-    # print("Sequence 2 (S2):", s2)
-
-    seq1 = "CACTGTAC"
-    seq2 = "GACACTTG"
-    dp, score, paths = find_global_alignments_with_scores(seq1, seq2)
-    save_result(dp, score, paths)
-
+    seq1, seq2 = generate_dna_sequences()
+    print("First DNA sequence (S1):", seq1)
+    print("Second DNA sequence (S2):", seq2)
+    process_and_plot(find_global_alignments_with_scores, seq1, seq2)
     print("------------")
-    # Calculate the best end-space free alignment
-    dp, score, paths = end_space_free_alignment(seq1, seq2)
-    save_result(dp, score, paths)
+    process_and_plot(end_space_free_alignment, seq1, seq2)

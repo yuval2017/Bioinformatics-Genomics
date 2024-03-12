@@ -1,5 +1,4 @@
 import re
-
 import pandas as pd
 from ViennaRNA import RNA
 import subprocess
@@ -18,9 +17,10 @@ def extract_mRNA_fragment_3(row):
     end_index = row['Read_end_3']
     return read_sequence[start_index - 1:end_index]
 
+
 def RNA_duplex(miRNA, mRNA):
     try:
-        # Run RNAduplex subprocess
+        # Run RNAduplex
         command = subprocess.Popen(['RNAduplex'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    universal_newlines=True)
         input_seq = f"{miRNA}\n{mRNA}\n"
@@ -35,7 +35,7 @@ def RNA_duplex(miRNA, mRNA):
         structure, pair_miRNA = matches1.groups()
         matches2 = re.match(pattern2, val2)
         pair_mRNA, energy = matches2.groups()
-        if len(matches1.groups()) > 2 or  len(matches2.groups()) > 2:
+        if len(matches1.groups()) > 2 or len(matches2.groups()) > 2:
             print("Regular exp problem!")
 
         start_miRNA, end_miRNA = map(lambda x: int(x.strip()), pair_miRNA.split(','))
@@ -47,22 +47,6 @@ def RNA_duplex(miRNA, mRNA):
         # Handle exceptions
         print("Error:", e)
         return None
-
-
-# Define a function to compute the RNA duplex
-def compute_RNA_duplex(row):
-    miRNA = row['miRNA fragment (5\'-3\')']
-    mRNA = row['mRNA fragment (3\'-5\')']
-    out, structure, energy, start_miRNA, end_miRNA, start_mRNA, end_mRNA = RNA_duplex(miRNA, mRNA)
-
-    if structure == '.&.':
-        return out, "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"
-
-    miRNA_interacting_region = miRNA[start_miRNA - 1: end_miRNA]
-    mRNA_interacting_region = mRNA[start_mRNA - 1: end_mRNA][::-1]
-    duplex, matches, bp_gc, mismatch, b_miRNA = duplex_string(structure, miRNA_interacting_region,
-                                                              mRNA_interacting_region)
-    return out, miRNA_interacting_region, mRNA_interacting_region, duplex, energy, matches, bp_gc, mismatch, b_miRNA
 
 
 def duplex_string(structure, miRNA, mRNA):
@@ -120,9 +104,25 @@ def duplex_string(structure, miRNA, mRNA):
         middle_line1 += ' '
         middle_line2 += stack_mRNA.pop()[0]
         bottom_line += ' '
-    duplex = top_line + '\n' + middle_line1 + '\n' + middle_line2 + '\n' + bottom_line
 
+    duplex = top_line + '\n' + middle_line1 + '\n' + middle_line2 + '\n' + bottom_line
     return duplex, matches, bp_gc, mismatch, b_miRNA
+
+
+# Define a function to compute the RNA duplex
+def compute_RNA_duplex(row):
+    miRNA = row['miRNA fragment (5\'-3\')']
+    mRNA = row['mRNA fragment (3\'-5\')']
+    out, structure, energy, start_miRNA, end_miRNA, start_mRNA, end_mRNA = RNA_duplex(miRNA, mRNA)
+
+    if structure == '.&.':
+        return out, "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"
+
+    miRNA_interacting_region = miRNA[start_miRNA - 1: end_miRNA]
+    mRNA_interacting_region = mRNA[start_mRNA - 1: end_mRNA][::-1]
+    duplex, matches, bp_gc, mismatch, b_miRNA = duplex_string(structure, miRNA_interacting_region,
+                                                              mRNA_interacting_region)
+    return out, miRNA_interacting_region, mRNA_interacting_region, duplex, energy, matches, bp_gc, mismatch, b_miRNA
 
 
 def exec_and_save_df(df, csv_path):
@@ -143,12 +143,6 @@ def exec_and_save_df(df, csv_path):
 
 
 if __name__ == "__main__":
-    miRNA = 20 * 'A'
-    mRNA = 20 * 'C'
-    duplex1 = RNA.duplexfold(miRNA, mRNA)
-    structure = duplex1.structure
-    energy = duplex1.energy
-    duplex2 = RNA.duplexfold(mRNA, miRNA)
     # Your string
     value = ".((((((((..(((((.&.))))))))))))).   1,17  :   3,17  (-19.70)"
     val1, val2 = value.split(':')
