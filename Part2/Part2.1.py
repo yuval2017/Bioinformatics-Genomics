@@ -40,25 +40,25 @@ if __name__ == "__main__":
     bar_colors = ['blue', 'green', 'red']
     fig, axes = plt.subplots(2, 1, figsize=(12, 10))
 
-    #top_20_counts_miRNA.plot(kind='bar', ax=axes[0], stacked=True, color=bar_colors)
-    #top_20_counts_mRNA.plot(kind='bar', ax=axes[1], stacked=True, color=bar_colors)
+    top_20_counts_miRNA.plot(kind='bar', ax=axes[0], stacked=True, color=bar_colors)
+    top_20_counts_mRNA.plot(kind='bar', ax=axes[1], stacked=True, color=bar_colors)
 
     # # Set titles and axis labels
-    # axes[0].set_title('Top 20 miRNA Interactions by Binding Region')
-    # axes[0].set_xlabel('miRNA')
-    # axes[0].set_ylabel('Total Number Of Interactions')
-    #
-    # axes[1].set_title('Top 20 mRNA Interactions by Binding Region')
-    # axes[1].set_xlabel('mRNA')
-    # axes[1].set_ylabel('Total Number Of Interactions')
-    #
-    # plt.tight_layout()  # Adjust layout to prevent overlap of labels
-    # plt.show()
-    # plt.subplots(figsize=(12, 10))
-    # top_miRNA_5UTR = set(counts_pivot_miRNA.nlargest(20, "5'UTR").index)
-    # top_miRNA_3UTR = set(counts_pivot_miRNA.nlargest(20, "3'UTR").index)
-    # top_miRNA_CDS = set(counts_pivot_miRNA.nlargest(20, "CDS").index)
-    # venn3([top_miRNA_5UTR, top_miRNA_3UTR, top_miRNA_CDS], values_to_keep)
-    # plt.title("Overlap between top miRNAs at different regions")
-    # plt.show()
+    axes[0].set_title('Top 20 miRNA Interactions by Binding Region')
+    axes[0].set_xlabel('miRNA')
+    axes[0].set_ylabel('Total Number Of Interactions')
+
+    axes[1].set_title('Top 20 mRNA Interactions by Binding Region')
+    axes[1].set_xlabel('mRNA')
+    axes[1].set_ylabel('Total Number Of Interactions')
+
+    plt.tight_layout()  # Adjust layout to prevent overlap of labels
+    plt.show()
+    plt.subplots(figsize=(12, 10))
+    top_miRNA_5UTR = set(counts_pivot_miRNA.nlargest(20, "5'UTR").index)
+    top_miRNA_3UTR = set(counts_pivot_miRNA.nlargest(20, "3'UTR").index)
+    top_miRNA_CDS = set(counts_pivot_miRNA.nlargest(20, "CDS").index)
+    venn3([top_miRNA_5UTR, top_miRNA_3UTR, top_miRNA_CDS], values_to_keep)
+    plt.title("Overlap between top miRNAs at different regions")
+    plt.show()
 

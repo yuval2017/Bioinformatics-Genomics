@@ -58,7 +58,7 @@ def duplex_string(structure, miRNA, mRNA):
     stack_miRNA = list(zip(list(miRNA), list(structure_miRNA)))[::-1]
     stack_mRNA = list(zip(list(mRNA), list(structure_mRNA)))[::-1]
 
-    b_miRNA = b_mRNA = mismatch = matches = bp_gc = 0
+    b_miRNA = b_mRNA = mismatch = matches = bp_gc = bg_au = bg_gu = 0
     top_line = middle_line1 = middle_line2 = bottom_line = ''
     while stack_miRNA and stack_mRNA:
         c_top = c_middle1 = c_middle2 = c_bottom = ' '
@@ -80,6 +80,10 @@ def duplex_string(structure, miRNA, mRNA):
             c_middle2, _ = stack_mRNA.pop()
             if c_middle1 + c_middle2 in ['GC', 'CG']:
                 bp_gc += 1
+            if c_middle1 + c_middle2 in ['AT', 'TA']:
+                bg_au += 1
+            if c_middle1 + c_middle2 in ['GT', 'TG']:
+                bg_gu += 1
 
         top_line += c_top
         middle_line1 += c_middle1
@@ -106,7 +110,7 @@ def duplex_string(structure, miRNA, mRNA):
         bottom_line += ' '
 
     duplex = top_line + '\n' + middle_line1 + '\n' + middle_line2 + '\n' + bottom_line
-    return duplex, matches, bp_gc, mismatch, b_miRNA
+    return duplex, matches, bp_gc, bg_au, bg_gu, mismatch, b_miRNA, b_mRNA
 
 
 # Define a function to compute the RNA duplex
@@ -117,15 +121,15 @@ def compute_RNA_duplex(row):
     out, structure, energy, start_miRNA, end_miRNA, start_mRNA, end_mRNA = RNA_duplex(miRNA, mRNA)
 
     if structure == '.&.':
-        return out, "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"
+        return out, "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA", "NA"
 
     miRNA_interacting_region = miRNA[start_miRNA - 1: end_miRNA]
     mRNA_interacting_region = mRNA[start_mRNA - 1: end_mRNA][::-1]
-    duplex, matches, bp_gc, mismatch, b_miRNA = duplex_string(structure, miRNA_interacting_region,
+    duplex, matches, bp_gc, bg_au, bg_gu, mismatch, b_miRNA, b_mRNA = duplex_string(structure, miRNA_interacting_region,
                                                               mRNA_interacting_region)
     conservation_score = sequence_conservation_score(miRNA, mRNA)
     normalized_accessibility, mfe = calculate_accessibility(seq)
-    return out, miRNA_interacting_region, mRNA_interacting_region, duplex, energy, matches, bp_gc, mismatch, b_miRNA, conservation_score, normalized_accessibility, mfe
+    return out, miRNA_interacting_region, mRNA_interacting_region, duplex, energy, matches, bp_gc, bg_au, bg_gu, mismatch, b_miRNA, b_mRNA , conservation_score, normalized_accessibility, mfe
 
 def sequence_conservation_score(miRNA_sequence, mRNA_sequence):
     # Perform global pairwise alignment using a DNA substitution matrix
@@ -143,7 +147,7 @@ def sequence_conservation_score(miRNA_sequence, mRNA_sequence):
 def exec_and_save_df(df, csv_path):
     filter_columns = ["miRNA", "mRNA", "miRNA fragment (5\'-3\')", "mRNA fragment (3\'-5\')", "RNAduplex output",
                       "miRNA interacting region(5'-3')", "mRNA interacting region(3'-5')", "Duplex", "Energy", "BP",
-                      "GC_BP", "mismatches", "miRNA_b", "Conservation Score", "Normalized Accessibility", "MFE Value"]
+                      "GC_BP","AU_BG", "GU_BP", "mismatches", "miRNA_b", 'mRNA_b', "Conservation Score", "Normalized Accessibility", "MFE Value"]
     # Apply the function to each row and create a new column
     df['miRNA fragment (5\'-3\')'] = df.apply(extract_miRNA_fragment_5, axis=1)
     df['mRNA fragment (3\'-5\')'] = df.apply(extract_mRNA_fragment_3, axis=1)
@@ -151,7 +155,7 @@ def exec_and_save_df(df, csv_path):
     # Apply the function to each row and create a new column
     df['RNAduplex output'] = df.apply(compute_RNA_duplex, axis=1)
     df['RNAduplex output'], df["miRNA interacting region(5'-3')"], df["mRNA interacting region(3'-5')"], df['Duplex'], \
-    df['Energy'], df['BP'], df['GC_BP'], df['mismatches'], df["miRNA_b"], df["Conservation Score"], df["Normalized Accessibility"], df["MFE Value"] = zip(*df.apply(compute_RNA_duplex, axis=1))
+    df['Energy'], df['BP'], df['GC_BP'], df['AU_BG'],  df['GU_BP'], df['mismatches'], df["miRNA_b"], df['mRNA_b'], df["Conservation Score"], df["Normalized Accessibility"], df["MFE Value"] = zip(*df.apply(compute_RNA_duplex, axis=1))
     df = df[filter_columns]
     # Save the DataFrame to a CSV file
     df.to_csv(csv_path, index=False)
@@ -210,41 +214,39 @@ if __name__ == "__main__":
     # Example usage
 
 
-
-    rna_sequence = "AUUGCCAGUUCGAUUCGGAAUUCGU"
-
-    k = 3  # Length of k-mer
-    #kmer_features = calculate_kmer_features(rna_sequence, k)
-    accessibility = calculate_accessibility(rna_sequence)
-    seq_miRNA = "AAGCTGCCAGTTGAAGAACTGT"
-    seq_mRNA = "TTACTTCATGGCAGCTATCCCACAG"
-    ans1 = sequence_conservation_score(seq_miRNA, seq_mRNA)
-    print(ans1)
-    #ans2 = calculate_conservation_score([seq_miRNA, seq_mRNA])
-    # Your string
-    value = ".((((((((..(((((.&.))))))))))))).   1,17  :   3,17  (-19.70)"
-    val1, val2 = value.split(':')
-    pattern1 = r"\s*([\.(\)&]+)\s+(\d+\s*\,\s*\d+)\s*"
-    pattern2 = r"\s*(\d+\s*\,\s*[0-9]+)\s+\(\s*(-?\d+\.\d+)\s*\)\s*"
-    # Match the pattern in the string
-    matches1 = re.match(pattern1, val1)
-    grp1 = matches1.groups()
-    matches2 = re.match(pattern2, val2)
-    grp2 = matches2.groups()
-    duplex_string('.((((((((..(((((.&.))))))))))))).', 'AAGCTGCCAGTTGAAGA', 'ATCGACGGTACTTCA')
-    save_csv_path = '../Data/Table_S2.csv'
-    example = 'AAGCTGCCAGTTGAAGAACTGTTTACTTCATGGCAGCTATCCCACA'
-    print(example[22:47])
+    #
+    # rna_sequence = "AUUGCCAGUUCGAUUCGGAAUUCGU"
+    #
+    # k = 3  # Length of k-mer
+    # #kmer_features = calculate_kmer_features(rna_sequence, k)
+    # accessibility = calculate_accessibility(rna_sequence)
+    # seq_miRNA = "AAGCTGCCAGTTGAAGAACTGT"
+    # seq_mRNA = "TTACTTCATGGCAGCTATCCCACAG"
+    # ans1 = sequence_conservation_score(seq_miRNA, seq_mRNA)
+    # print(ans1)
+    # #ans2 = calculate_conservation_score([seq_miRNA, seq_mRNA])
+    # # Your string
+    # value = ".((((((((..(((((.&.))))))))))))).   1,17  :   3,17  (-19.70)"
+    # val1, val2 = value.split(':')
+    # pattern1 = r"\s*([\.(\)&]+)\s+(\d+\s*\,\s*\d+)\s*"
+    # pattern2 = r"\s*(\d+\s*\,\s*[0-9]+)\s+\(\s*(-?\d+\.\d+)\s*\)\s*"
+    # # Match the pattern in the string
+    # matches1 = re.match(pattern1, val1)
+    # grp1 = matches1.groups()
+    # matches2 = re.match(pattern2, val2)
+    # grp2 = matches2.groups()
+    # duplex_string('.((((((((..(((((.&.))))))))))))).', 'AAGCTGCCAGTTGAAGA', 'ATCGACGGTACTTCA')
+    # save_csv_path = '../Data/Table_S2.csv'
+    # example = 'AAGCTGCCAGTTGAAGAACTGTTTACTTCATGGCAGCTATCCCACA'
+    # print(example[22:47])
     # Load data into a Pandas DataFrame
+
+    save_csv_path = '../Data/Table_S2.csv'
     df = pd.read_csv(save_csv_path)
-    ans = 0
-    for path in ['../Data/5UTR_features.csv', '../Data/CDS_features.csv', '../Data/3UTR_features.csv']:
-        ans += len(pd.read_csv(path))
-    #most_frequent_kmer(df, 3)
     df_5UTR = df[df['Binding_Region'] == "5'UTR"].copy()
     df_CDS = df[df['Binding_Region'] == 'CDS'].copy()
     df_3UTR = df[df['Binding_Region'] == "3'UTR"].copy()
-    ans2 = len(df_5UTR) + len(df_CDS) + len(df_3UTR)
-    exec_and_save_df(df_5UTR, '../Data/5UTR_features.csv')
-    exec_and_save_df(df_CDS, '../Data/CDS_features.csv')
-    exec_and_save_df(df_3UTR, '../Data/3UTR_features.csv')
+
+    exec_and_save_df(df_5UTR, '../Data/5UTR_features2.csv')
+    exec_and_save_df(df_CDS, '../Data/CDS_features2.csv')
+    exec_and_save_df(df_3UTR, '../Data/3UTR_features2.csv')
